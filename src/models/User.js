@@ -51,6 +51,13 @@ const userSchema = new mongoose.Schema(
     otp_expires_at: {
       type: Date,
     },
+    is_suspended: {
+      type: Boolean,
+      default: false,
+    },
+    suspended_at: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

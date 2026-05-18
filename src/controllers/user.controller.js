@@ -166,6 +166,14 @@ const login = async (req, res) => {
             });
         }
 
+        if (user.is_suspended) {
+            return res.status(403).json({
+                success: false,
+                message: 'Your account has been suspended. Please contact admin for assistance.',
+                suspended: true,
+            });
+        }
+
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({ success: false, message: 'Invalid password' });

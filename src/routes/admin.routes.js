@@ -9,6 +9,9 @@ router.post('/login', adminController.adminLogin);
 // ─── Protected (Admin JWT required) ─────────────────────────────────
 router.get('/dashboard', authenticateAdmin, adminController.getDashboardStats);
 router.get('/users', authenticateAdmin, adminController.getAllUsers);
+router.get('/users/:id', authenticateAdmin, adminController.getUserProfile);
+router.patch('/users/:id/suspend', authenticateAdmin, adminController.suspendUser);
+router.patch('/users/:id/unsuspend', authenticateAdmin, adminController.unsuspendUser);
 router.delete('/users/:id', authenticateAdmin, adminController.deleteUser);
 router.get('/resources', authenticateAdmin, adminController.getAllResources);
 router.delete('/resources/:id', authenticateAdmin, adminController.deleteResource);

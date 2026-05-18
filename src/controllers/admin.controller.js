@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Resource = require('../models/Resource');
 const Request = require('../models/Request');
 const serverConfig = require('../config/server.config');
+const { sendSuspensionEmail, sendReactivationEmail } = require('../config/email.config');
 
 // ─── ADMIN LOGIN ────────────────────────────────────────────────────
 const adminLogin = async (req, res) => {
@@ -51,12 +52,13 @@ const adminLogin = async (req, res) => {
 // ─── DASHBOARD STATS ────────────────────────────────────────────────
 const getDashboardStats = async (req, res) => {
     try {
-        const [totalUsers, totalResources, totalDeals, availableResources, pendingRequests] = await Promise.all([
+        const [totalUsers, totalResources, totalDeals, availableResources, pendingRequests, suspendedUsers] = await Promise.all([
             User.countDocuments({ is_verified: true }),
             Resource.countDocuments(),
             Request.countDocuments({ status: 'Completed' }),
             Resource.countDocuments({ status: 'Available' }),
             Request.countDocuments({ status: 'Pending' }),
+            User.countDocuments({ is_suspended: true }),
         ]);
 
         return res.status(200).json({
@@ -67,6 +69,7 @@ const getDashboardStats = async (req, res) => {
                 totalDeals,
                 availableResources,
                 pendingRequests,
+                suspendedUsers,
             },
         });
     } catch (error) {
@@ -85,6 +88,88 @@ const getAllUsers = async (req, res) => {
         return res.status(200).json({ success: true, count: users.length, users });
     } catch (error) {
         console.error('Admin get all users error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+// ─── GET USER PROFILE (Admin) ───────────────────────────────────────
+const getUserProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id)
+            .select('-password -otp -otp_expires_at');
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Also get their resources count and requests count
+        const [resourcesCount, requestsCount] = await Promise.all([
+            Resource.countDocuments({ owner_id: req.params.id }),
+            Request.countDocuments({ $or: [{ sender_id: req.params.id }, { receiver_id: req.params.id }] }),
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            user,
+            resourcesCount,
+            requestsCount,
+        });
+    } catch (error) {
+        console.error('Admin get user profile error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+// ─── SUSPEND USER (Admin) ───────────────────────────────────────────
+const suspendUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.is_suspended = true;
+        user.suspended_at = new Date();
+        await user.save();
+
+        // Send suspension email
+        try {
+            await sendSuspensionEmail(user.email, user.name);
+            console.log(`📧 Suspension email sent to ${user.email}`);
+        } catch (emailErr) {
+            console.error('Suspension email failed:', emailErr.message);
+        }
+
+        return res.status(200).json({ success: true, message: `${user.name} has been suspended` });
+    } catch (error) {
+        console.error('Admin suspend user error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+// ─── UNSUSPEND USER (Admin) ─────────────────────────────────────────
+const unsuspendUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.is_suspended = false;
+        user.suspended_at = undefined;
+        await user.save();
+
+        // Send reactivation email
+        try {
+            await sendReactivationEmail(user.email, user.name);
+            console.log(`📧 Reactivation email sent to ${user.email}`);
+        } catch (emailErr) {
+            console.error('Reactivation email failed:', emailErr.message);
+        }
+
+        return res.status(200).json({ success: true, message: `${user.name}'s account has been reactivated` });
+    } catch (error) {
+        console.error('Admin unsuspend user error:', error);
         return res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
@@ -160,6 +245,9 @@ module.exports = {
     adminLogin,
     getDashboardStats,
     getAllUsers,
+    getUserProfile,
+    suspendUser,
+    unsuspendUser,
     deleteUser,
     getAllResources,
     deleteResource,
