@@ -33,11 +33,10 @@ const signup = async (req, res) => {
                 await existingUser.save();
 
                 console.log(`\n📧 OTP for ${existingUser.email}: ${otp}\n`);
-                try {
-                    await sendOtpEmail(existingUser.email, otp, 'signup');
-                } catch (emailErr) {
+                // Send email in background — don't block the response
+                sendOtpEmail(existingUser.email, otp, 'signup').catch((emailErr) => {
                     console.error('Email send failed:', emailErr.message);
-                }
+                });
 
                 return res.status(200).json({
                     success: true,
@@ -69,11 +68,10 @@ const signup = async (req, res) => {
         });
 
         console.log(`\n📧 OTP for ${email.toLowerCase()}: ${otp}\n`);
-        try {
-            await sendOtpEmail(email.toLowerCase(), otp, 'signup');
-        } catch (emailErr) {
+        // Send email in background — don't block the response
+        sendOtpEmail(email.toLowerCase(), otp, 'signup').catch((emailErr) => {
             console.error('Email send failed:', emailErr.message);
-        }
+        });
 
         return res.status(201).json({
             success: true,

@@ -37,7 +37,11 @@ app.use('/admin', adminRoutes);
 
 // ─── Start Server ────────────────────────────────────────────────────
 server.listen(serverConfig.PORT, async () => {
-    await connectDB();
     console.log(`🚀 Server is running on port ${serverConfig.PORT}`);
+    console.log(`📁 ENV loaded from: ${require('path').resolve(__dirname, '../.env')}`);
+    console.log(`🔗 MONGO_URI: ${serverConfig.MONGO_URI ? '✅ Set' : '❌ NOT SET'}`);
+    console.log(`🔑 JWT_SECRET: ${serverConfig.JWT_SECRET ? '✅ Set' : '❌ NOT SET'}`);
+    console.log(`☁️  CLOUDINARY: ${process.env.CLOUDINARY_CLOUD_NAME ? '✅ Set' : '❌ NOT SET'}`);
+    await connectDB();
     console.log(`⚡ Socket.io ready for real-time connections`);
 });
