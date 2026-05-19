@@ -16,5 +16,7 @@ router.delete('/users/:id', authenticateAdmin, adminController.deleteUser);
 router.get('/resources', authenticateAdmin, adminController.getAllResources);
 router.delete('/resources/:id', authenticateAdmin, adminController.deleteResource);
 router.get('/deals', authenticateAdmin, adminController.getAllDeals);
+router.patch('/users/:id/verify', authenticateAdmin, adminController.verifyUser);
+router.patch('/users/:id/unverify', authenticateAdmin, adminController.unverifyUser);
 
 module.exports = router;
