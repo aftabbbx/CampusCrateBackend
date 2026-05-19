@@ -230,13 +230,49 @@ const getAllDeals = async (req, res) => {
     try {
         const deals = await Request.find({ status: 'Completed' })
             .populate('resource_id', 'title category type price')
-            .populate('sender_id', 'name username email')
-            .populate('receiver_id', 'name username email')
+            .populate('sender_id', 'name roll_number email')
+            .populate('receiver_id', 'name roll_number email')
             .sort({ updatedAt: -1 });
 
         return res.status(200).json({ success: true, count: deals.length, deals });
     } catch (error) {
         console.error('Admin get all deals error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+// ─── VERIFY USER (Admin) ────────────────────────────────────────────
+const verifyUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.is_college_verified = true;
+        await user.save();
+
+        return res.status(200).json({ success: true, message: `${user.name} has been verified as a college student` });
+    } catch (error) {
+        console.error('Admin verify user error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+// ─── UNVERIFY USER (Admin) ──────────────────────────────────────────
+const unverifyUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.is_college_verified = false;
+        await user.save();
+
+        return res.status(200).json({ success: true, message: `${user.name}'s college verification has been removed` });
+    } catch (error) {
+        console.error('Admin unverify user error:', error);
         return res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
@@ -252,4 +288,6 @@ module.exports = {
     getAllResources,
     deleteResource,
     getAllDeals,
+    verifyUser,
+    unverifyUser,
 };

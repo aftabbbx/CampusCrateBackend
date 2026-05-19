@@ -7,11 +7,11 @@ const userSchema = new mongoose.Schema(
       required: [true, "Name is required"],
       trim: true,
     },
-    username: {
+    roll_number: {
       type: String,
-      required: [true, "Username is required"],
       unique: true,
-      lowercase: true,
+      sparse: true,
+      uppercase: true,
       trim: true,
     },
     email: {
@@ -33,6 +33,15 @@ const userSchema = new mongoose.Schema(
     profile_image: {
       type: String,
     },
+    course: {
+      type: String,
+      enum: ["BCA", "BBA", "BCom", "BSc", "BA", "BTech", "MBA", "MCA", "MCom", "MSc", "Other"],
+      trim: true,
+    },
+    batch: {
+      type: String,
+      trim: true,
+    },
     semester: {
       type: String,
       trim: true,
@@ -41,9 +50,35 @@ const userSchema = new mongoose.Schema(
       type: String,
       maxlength: 500,
     },
+    trust_score: {
+      type: Number,
+      default: 50,
+      min: 0,
+      max: 100,
+    },
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     is_verified: {
       type: Boolean,
       default: false,
+    },
+    is_college_verified: {
+      type: Boolean,
+      default: false,
+    },
+    last_active: {
+      type: Date,
+      default: Date.now,
     },
     otp: {
       type: String,
