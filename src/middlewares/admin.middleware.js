@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const serverConfig = require('../config/server.config');
-const Admin = require('../models/Admin');
+const User = require('../models/User');
 
 const authenticateAdmin = async (req, res, next) => {
     try {
@@ -16,12 +16,12 @@ const authenticateAdmin = async (req, res, next) => {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, serverConfig.JWT_SECRET);
 
-        // Verify this is actually an admin
-        const admin = await Admin.findById(decoded.adminId);
-        if (!admin) {
+        // Verify this is actually an admin user
+        const admin = await User.findById(decoded.adminId);
+        if (!admin || admin.role !== 'admin') {
             return res.status(403).json({
                 success: false,
-                message: 'Access denied. Admin not found.',
+                message: 'Access denied. Admin privileges required.',
             });
         }
 

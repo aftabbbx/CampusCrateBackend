@@ -6,7 +6,7 @@ const authenticate = require('../middlewares/auth.middleware');
 // ─── All Protected (JWT required) ───────────────────────────────────
 router.get('/all', authenticate, notificationController.getNotifications);
 router.get('/unread-count', authenticate, notificationController.getUnreadCount);
-router.put('/:id/read', authenticate, notificationController.markAsRead);
 router.put('/read-all', authenticate, notificationController.markAllRead);
+router.put('/:id/read', authenticate, notificationController.markAsRead);
 
 module.exports = router;

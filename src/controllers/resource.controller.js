@@ -40,7 +40,7 @@ const createResource = async (req, res) => {
 const getAllResources = async (req, res) => {
     try {
         const resources = await Resource.find({ status: 'Available' })
-            .populate('owner_id', 'name username email profile_image semester')
+            .populate('owner_id', 'name username email profile_image semester roll_number')
             .sort({ createdAt: -1 });
 
         return res.status(200).json({ success: true, count: resources.length, resources });
@@ -54,7 +54,7 @@ const getAllResources = async (req, res) => {
 const getResourceById = async (req, res) => {
     try {
         const resource = await Resource.findById(req.params.id)
-            .populate('owner_id', 'name username email profile_image semester bio');
+            .populate('owner_id', 'name username email profile_image semester bio roll_number');
 
         if (!resource) {
             return res.status(404).json({ success: false, message: 'Resource not found' });
@@ -157,7 +157,7 @@ const searchResources = async (req, res) => {
         if (condition) filter.condition = condition;
 
         const resources = await Resource.find(filter)
-            .populate('owner_id', 'name username email profile_image')
+            .populate('owner_id', 'name username email profile_image roll_number')
             .sort({ createdAt: -1 });
 
         return res.status(200).json({ success: true, count: resources.length, resources });

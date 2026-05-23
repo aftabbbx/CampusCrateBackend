@@ -1,6 +1,5 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const Admin = require('../models/Admin');
 const User = require('../models/User');
 const Resource = require('../models/Resource');
 const Request = require('../models/Request');
@@ -16,18 +15,22 @@ const adminLogin = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Email and password are required' });
         }
 
-        const admin = await Admin.findOne({ email: email.toLowerCase() });
-        if (!admin) {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) {
             return res.status(404).json({ success: false, message: 'Admin not found' });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, admin.password);
+        if (user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Access denied. You are not an admin.' });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({ success: false, message: 'Invalid password' });
         }
 
         const token = jwt.sign(
-            { adminId: admin._id, email: admin.email, role: admin.role },
+            { adminId: user._id, email: user.email, role: user.role },
             serverConfig.JWT_SECRET,
             { expiresIn: serverConfig.JWT_EXPIRES_IN }
         );
@@ -37,10 +40,10 @@ const adminLogin = async (req, res) => {
             message: 'Admin login successful',
             token,
             admin: {
-                _id: admin._id,
-                name: admin.name,
-                email: admin.email,
-                role: admin.role,
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
             },
         });
     } catch (error) {
@@ -53,7 +56,7 @@ const adminLogin = async (req, res) => {
 const getDashboardStats = async (req, res) => {
     try {
         const [totalUsers, totalResources, totalDeals, availableResources, pendingRequests, suspendedUsers] = await Promise.all([
-            User.countDocuments({ is_verified: true }),
+            User.countDocuments({ is_verified: true, role: 'user' }),
             Resource.countDocuments(),
             Request.countDocuments({ status: 'Completed' }),
             Resource.countDocuments({ status: 'Available' }),
@@ -81,7 +84,7 @@ const getDashboardStats = async (req, res) => {
 // ─── GET ALL USERS (Admin) ──────────────────────────────────────────
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find()
+        const users = await User.find({ role: 'user' })
             .select('-password -otp -otp_expires_at')
             .sort({ createdAt: -1 });
 
@@ -135,7 +138,6 @@ const suspendUser = async (req, res) => {
         // Send suspension email
         try {
             await sendSuspensionEmail(user.email, user.name);
-            console.log(`📧 Suspension email sent to ${user.email}`);
         } catch (emailErr) {
             console.error('Suspension email failed:', emailErr.message);
         }
@@ -162,7 +164,6 @@ const unsuspendUser = async (req, res) => {
         // Send reactivation email
         try {
             await sendReactivationEmail(user.email, user.name);
-            console.log(`📧 Reactivation email sent to ${user.email}`);
         } catch (emailErr) {
             console.error('Reactivation email failed:', emailErr.message);
         }

@@ -30,6 +30,8 @@ router.get('/profile', authenticate, userController.getProfile);
 router.put('/update/:id', authenticate, userController.updateProfile);
 router.post('/follow/:id', authenticate, userController.followUser);
 router.post('/unfollow/:id', authenticate, userController.unfollowUser);
+router.get('/followers/:id', userController.getFollowers);
+router.get('/following/:id', userController.getFollowing);
 router.put('/change-password', authenticate, userController.changePassword);
 router.delete('/delete/:id', authenticate, userController.deleteAccount);
 

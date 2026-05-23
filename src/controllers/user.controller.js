@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Resource = require('../models/Resource');
+const Notification = require('../models/Notification');
 const serverConfig = require('../config/server.config');
 const { sendOtpEmail } = require('../config/email.config');
 const generateOtp = require('../utils/generateOtp');
@@ -259,10 +260,23 @@ const resendOtp = async (req, res) => {
 };
 
 // ─── HELPER: Compute profile completion ─────────────────────────────
+const PROFILE_FIELDS = [
+    { key: 'name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'roll_number', label: 'Roll Number' },
+    { key: 'phone_number', label: 'Phone Number' },
+    { key: 'profile_image', label: 'Profile Photo' },
+    { key: 'course', label: 'Course' },
+    { key: 'batch', label: 'Batch' },
+    { key: 'semester', label: 'Semester' },
+    { key: 'bio', label: 'Bio' },
+];
+
 const computeProfileCompletion = (user) => {
-    const fields = ['name', 'email', 'roll_number', 'phone_number', 'profile_image', 'course', 'batch', 'semester', 'bio'];
-    const filled = fields.filter((f) => user[f] && String(user[f]).trim() !== '').length;
-    return Math.round((filled / fields.length) * 100);
+    const filled = PROFILE_FIELDS.filter((f) => user[f.key] && String(user[f.key]).trim() !== '').length;
+    const percent = Math.round((filled / PROFILE_FIELDS.length) * 100);
+    const missing = PROFILE_FIELDS.filter((f) => !user[f.key] || String(user[f.key]).trim() === '').map((f) => f.label);
+    return { percent, missing };
 };
 
 // ─── GET ALL USERS ──────────────────────────────────────────────────
@@ -306,7 +320,7 @@ const getProfile = async (req, res) => {
                 ...user.toObject(),
                 followers_count: user.followers?.length || 0,
                 following_count: user.following?.length || 0,
-                profile_completion: computeProfileCompletion(user),
+                profile_completion: computeProfileCompletion(user).percent,
                 resources_count: resourcesCount,
             },
             recentResources,
@@ -333,15 +347,28 @@ const getPublicProfile = async (req, res) => {
             return res.status(403).json({ success: false, message: 'This account has been suspended.' });
         }
 
-        // Get resources count and recent resources
-        const resourcesCount = await Resource.countDocuments({ owner_id: user._id });
-        const recentResources = await Resource.find({ owner_id: user._id, status: 'Available' })
+        // Get ALL resources (not just 5)
+        const resources = await Resource.find({ owner_id: user._id })
             .sort({ createdAt: -1 })
-            .limit(5)
-            .select('title category type price status createdAt');
+            .select('title category type price status condition image_url createdAt');
 
-        // Get follower/following counts from the full doc
+        const resourcesCount = resources.length;
+
+        // Get follower/following counts + check if requester follows this user
         const fullUser = await User.findById(user._id).select('followers following');
+
+        // Check if the requesting user follows this profile
+        let isFollowing = false;
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            try {
+                const jwt = require('jsonwebtoken');
+                const decoded = jwt.verify(authHeader.split(' ')[1], serverConfig.JWT_SECRET);
+                isFollowing = fullUser.followers?.includes(decoded.userId) || false;
+            } catch (e) {
+                // Token invalid, not following
+            }
+        }
 
         return res.status(200).json({
             success: true,
@@ -360,11 +387,12 @@ const getPublicProfile = async (req, res) => {
                 last_active: user.last_active,
                 followers_count: fullUser.followers?.length || 0,
                 following_count: fullUser.following?.length || 0,
-                profile_completion: computeProfileCompletion(user),
+                profile_completion: computeProfileCompletion(user).percent,
                 resources_count: resourcesCount,
+                isFollowing,
                 createdAt: user.createdAt,
             },
-            recentResources,
+            resources,
         });
     } catch (error) {
         console.error('Get public profile error:', error);
@@ -396,7 +424,29 @@ const updateProfile = async (req, res) => {
         if (bio !== undefined) user.bio = bio;
         if (profile_image !== undefined) user.profile_image = profile_image;
         user.last_active = new Date();
+
+        // Compute completion BEFORE save to check milestones
+        const oldCompletion = computeProfileCompletion(user);
         await user.save();
+        const newCompletion = computeProfileCompletion(user);
+
+        // ─── Profile completion notifications ────────────────────
+        if (newCompletion.percent >= 50 && oldCompletion.percent < 50 && newCompletion.percent < 100) {
+            await Notification.create({
+                user_id: userId,
+                title: 'Profile 50% Complete! 🎯',
+                message: `Great progress! Complete these to finish: ${newCompletion.missing.join(', ')}`,
+                type: 'system',
+            });
+        }
+        if (newCompletion.percent === 100 && oldCompletion.percent < 100) {
+            await Notification.create({
+                user_id: userId,
+                title: 'Profile Complete! 🎉',
+                message: 'Congratulations! Your profile is 100% complete. You now have full trust on CampusCrate.',
+                type: 'system',
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -417,6 +467,7 @@ const updateProfile = async (req, res) => {
                 trust_score: user.trust_score,
                 followers_count: user.followers?.length || 0,
                 following_count: user.following?.length || 0,
+                profile_completion: newCompletion.percent,
                 createdAt: user.createdAt,
             },
         });
@@ -453,6 +504,15 @@ const followUser = async (req, res) => {
         user.following.push(targetId);
         target.followers.push(userId);
         await Promise.all([user.save(), target.save()]);
+
+        // ─── Create follow notification ──────────────────────────
+        await Notification.create({
+            user_id: targetId,
+            from_user_id: userId,
+            title: 'New Follower',
+            message: `${user.name} started following you`,
+            type: 'follow',
+        });
 
         return res.status(200).json({
             success: true,
@@ -555,6 +615,42 @@ const deleteAccount = async (req, res) => {
     }
 };
 
+// ─── GET FOLLOWERS LIST ─────────────────────────────────────────────
+const getFollowers = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('followers');
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const followers = await User.find({ _id: { $in: user.followers } })
+            .select('name roll_number profile_image bio');
+
+        return res.status(200).json({ success: true, count: followers.length, users: followers });
+    } catch (error) {
+        console.error('Get followers error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+// ─── GET FOLLOWING LIST ─────────────────────────────────────────────
+const getFollowing = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('following');
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const following = await User.find({ _id: { $in: user.following } })
+            .select('name roll_number profile_image bio');
+
+        return res.status(200).json({ success: true, count: following.length, users: following });
+    } catch (error) {
+        console.error('Get following error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
 module.exports = {
     signup,
     verifyOtp,
@@ -568,4 +664,6 @@ module.exports = {
     unfollowUser,
     changePassword,
     deleteAccount,
+    getFollowers,
+    getFollowing,
 };

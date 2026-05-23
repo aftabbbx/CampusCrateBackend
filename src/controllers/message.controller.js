@@ -1,15 +1,23 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
-const { getIO, getOnlineUsers } = require('../config/socket.config');
 
 // ─── SEND MESSAGE ───────────────────────────────────────────────────
 const sendMessage = async (req, res) => {
     try {
-        const { receiver_id, message } = req.body;
+        const { receiver_id, message, message_type, media_url } = req.body;
 
-        if (!receiver_id || !message) {
-            return res.status(400).json({ success: false, message: 'Receiver ID and message are required' });
+        if (!receiver_id) {
+            return res.status(400).json({ success: false, message: 'Receiver ID is required' });
+        }
+
+        // Validate based on message type
+        const type = message_type || 'text';
+        if (type === 'text' && (!message || !message.trim())) {
+            return res.status(400).json({ success: false, message: 'Message text is required' });
+        }
+        if ((type === 'image' || type === 'voice') && !media_url) {
+            return res.status(400).json({ success: false, message: 'Media URL is required for image/voice messages' });
         }
 
         if (receiver_id === req.user.userId) {
@@ -24,38 +32,35 @@ const sendMessage = async (req, res) => {
         const newMessage = await Message.create({
             sender_id: req.user.userId,
             receiver_id,
-            message,
+            message: message || '',
+            message_type: type,
+            media_url: media_url || null,
             is_read: false,
         });
 
-        // ─── Real-time delivery via Socket.io ───────────────────────
-        try {
-            const io = getIO();
-            const onlineUsers = getOnlineUsers();
-            const receiverSocketId = onlineUsers.get(receiver_id);
+        // ─── Smart Notification: Only on FIRST message in conversation ──
+        const previousMessages = await Message.countDocuments({
+            $or: [
+                { sender_id: req.user.userId, receiver_id },
+                { sender_id: receiver_id, receiver_id: req.user.userId },
+            ],
+            _id: { $ne: newMessage._id },
+        });
 
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit('receive-message', {
-                    _id: newMessage._id,
-                    sender_id: req.user.userId,
-                    receiver_id,
-                    message: newMessage.message,
-                    is_read: false,
-                    createdAt: newMessage.createdAt,
-                });
-            }
-        } catch (socketErr) {
-            // Socket emit fail hone pe bhi REST response toh jayega
-            console.error('Socket emit error:', socketErr.message);
+        if (previousMessages === 0) {
+            // First ever message between these two users
+            const sender = await User.findById(req.user.userId).select('name');
+            await Notification.create({
+                user_id: receiver_id,
+                from_user_id: req.user.userId,
+                title: 'New Message',
+                message: `${sender?.name || 'Someone'} sent you a message`,
+                type: 'message',
+            });
         }
 
-        // Auto-notification to receiver
-        await Notification.create({
-            user_id: receiver_id,
-            title: 'New Message',
-            message: 'You have a new message',
-            type: 'message',
-        });
+        // NOTE: Socket emit is handled by the frontend via socket.emit('send-message')
+        // No duplicate emit from controller needed
 
         return res.status(201).json({ success: true, message: 'Message sent', data: newMessage });
     } catch (error) {
@@ -77,8 +82,8 @@ const getConversation = async (req, res) => {
             ],
         })
             .sort({ createdAt: 1 })
-            .populate('sender_id', 'name username profile_image')
-            .populate('receiver_id', 'name username profile_image');
+            .populate('sender_id', 'name profile_image')
+            .populate('receiver_id', 'name profile_image');
 
         return res.status(200).json({ success: true, count: messages.length, messages });
     } catch (error) {
@@ -91,15 +96,13 @@ const getConversation = async (req, res) => {
 const getConversationList = async (req, res) => {
     try {
         const myId = req.user.userId;
-        const mongoose = require('mongoose');
-        const myObjectId = mongoose.Types.ObjectId.createFromHexString(myId);
 
         const messages = await Message.aggregate([
             {
                 $match: {
                     $or: [
-                        { sender_id: myObjectId },
-                        { receiver_id: myObjectId },
+                        { sender_id: myId },
+                        { receiver_id: myId },
                     ],
                 },
             },
@@ -108,19 +111,20 @@ const getConversationList = async (req, res) => {
                 $group: {
                     _id: {
                         $cond: [
-                            { $eq: ['$sender_id', myObjectId] },
+                            { $eq: ['$sender_id', myId] },
                             '$receiver_id',
                             '$sender_id',
                         ],
                     },
                     lastMessage: { $first: '$message' },
+                    lastMessageType: { $first: '$message_type' },
                     lastMessageAt: { $first: '$createdAt' },
                     unreadCount: {
                         $sum: {
                             $cond: [
                                 {
                                     $and: [
-                                        { $eq: ['$receiver_id', myObjectId] },
+                                        { $eq: ['$receiver_id', myId] },
                                         { $eq: ['$is_read', false] },
                                     ],
                                 },
@@ -136,16 +140,23 @@ const getConversationList = async (req, res) => {
 
         // Populate user info
         const userIds = messages.map((m) => m._id);
-        const users = await User.find({ _id: { $in: userIds } }).select('name username email profile_image');
+        const users = await User.find({ _id: { $in: userIds } }).select('name email profile_image last_active roll_number');
 
         // Add online status
-        const onlineUsers = getOnlineUsers();
+        const { getOnlineUsers } = require('../config/socket.config');
+        let onlineUsers;
+        try {
+            onlineUsers = getOnlineUsers();
+        } catch (e) {
+            onlineUsers = new Map();
+        }
 
         const conversations = messages.map((m) => {
             const user = users.find((u) => u._id.toString() === m._id.toString());
             return {
                 user,
-                lastMessage: m.lastMessage,
+                lastMessage: m.lastMessageType === 'image' ? '📷 Photo' : m.lastMessageType === 'voice' ? '🎙️ Voice note' : m.lastMessage,
+                lastMessageType: m.lastMessageType,
                 lastMessageAt: m.lastMessageAt,
                 unreadCount: m.unreadCount,
                 isOnline: onlineUsers.has(m._id.toString()),
@@ -169,19 +180,6 @@ const markAsRead = async (req, res) => {
             { sender_id: otherUserId, receiver_id: myId, is_read: false },
             { is_read: true }
         );
-
-        // Notify sender via socket that messages were read
-        try {
-            const io = getIO();
-            const onlineUsers = getOnlineUsers();
-            const senderSocketId = onlineUsers.get(otherUserId);
-
-            if (senderSocketId) {
-                io.to(senderSocketId).emit('messages-marked-read', { reader_id: myId });
-            }
-        } catch (socketErr) {
-            console.error('Socket emit error:', socketErr.message);
-        }
 
         return res.status(200).json({ success: true, message: 'Messages marked as read' });
     } catch (error) {

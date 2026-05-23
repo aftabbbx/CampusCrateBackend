@@ -31,17 +31,16 @@ const getUnreadCount = async (req, res) => {
 // ─── MARK SINGLE AS READ ───────────────────────────────────────────
 const markAsRead = async (req, res) => {
     try {
-        const notification = await Notification.findOneAndUpdate(
+        const result = await Notification.updateOne(
             { _id: req.params.id, user_id: req.user.userId },
-            { is_read: true },
-            { new: true }
+            { $set: { is_read: true } }
         );
 
-        if (!notification) {
+        if (result.matchedCount === 0) {
             return res.status(404).json({ success: false, message: 'Notification not found' });
         }
 
-        return res.status(200).json({ success: true, message: 'Marked as read', notification });
+        return res.status(200).json({ success: true, message: 'Marked as read' });
     } catch (error) {
         console.error('Mark as read error:', error);
         return res.status(500).json({ success: false, message: 'Internal server error' });
@@ -53,7 +52,7 @@ const markAllRead = async (req, res) => {
     try {
         await Notification.updateMany(
             { user_id: req.user.userId, is_read: false },
-            { is_read: true }
+            { $set: { is_read: true } }
         );
 
         return res.status(200).json({ success: true, message: 'All notifications marked as read' });
