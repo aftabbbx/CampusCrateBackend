@@ -103,8 +103,18 @@ const userSchema = new mongoose.Schema(
             default: "user",
         },
     },
-    { timestamps: true }
+    { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
+
+// ─── Virtual: Profile completeness check ──────────────────────────────
+userSchema.virtual("is_profile_complete").get(function () {
+    return !!(
+        this.roll_number && String(this.roll_number).trim() !== "" &&
+        this.course && String(this.course).trim() !== "" &&
+        this.batch && String(this.batch).trim() !== "" &&
+        this.semester && String(this.semester).trim() !== ""
+    );
+});
 
 // ─── Auto-generate custom _id before insert ──────────────────────────
 userSchema.pre("save", async function () {
