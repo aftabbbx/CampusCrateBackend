@@ -10,18 +10,16 @@ const generateOtp = require('../utils/generateOtp');
 // ─── SIGNUP ─────────────────────────────────────────────────────────
 const signup = async (req, res) => {
     try {
-        const { name, roll_number, email, password, phone_number, course, batch, semester } = req.body;
+        const { name, email, password } = req.body;
 
-        if (!name || !roll_number || !email || !password) {
+        if (!name || !email || !password) {
             return res.status(400).json({
                 success: false,
-                message: 'Name, roll number, email and password are required',
+                message: 'Name, email and password are required',
             });
         }
 
-        const existingUser = await User.findOne({
-            $or: [{ email: email.toLowerCase() }, { roll_number: roll_number.toUpperCase() }],
-        });
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
 
         if (existingUser) {
             if (!existingUser.is_verified) {
@@ -30,10 +28,6 @@ const signup = async (req, res) => {
                 existingUser.otp_expires_at = new Date(Date.now() + 10 * 60 * 1000);
                 existingUser.name = name;
                 existingUser.password = await bcrypt.hash(password, 12);
-                if (phone_number) existingUser.phone_number = phone_number;
-                if (course) existingUser.course = course;
-                if (batch) existingUser.batch = batch;
-                if (semester) existingUser.semester = semester;
                 await existingUser.save();
 
                 console.log(`\n📧 OTP for ${existingUser.email}: ${otp}\n`);
@@ -48,10 +42,9 @@ const signup = async (req, res) => {
                 });
             }
 
-            const field = existingUser.email === email.toLowerCase() ? 'Email' : 'Roll Number';
             return res.status(409).json({
                 success: false,
-                message: `${field} already exists`,
+                message: 'Email already exists',
             });
         }
 
@@ -61,13 +54,8 @@ const signup = async (req, res) => {
 
         await User.create({
             name,
-            roll_number: roll_number.toUpperCase(),
             email: email.toLowerCase(),
             password: hashedPassword,
-            phone_number,
-            course,
-            batch,
-            semester,
             is_verified: false,
             otp: hashedOtp,
             otp_expires_at: new Date(Date.now() + 10 * 60 * 1000),
@@ -144,6 +132,7 @@ const verifyOtp = async (req, res) => {
                 is_college_verified: user.is_college_verified,
                 trust_score: user.trust_score,
                 profile_image: user.profile_image,
+                is_profile_complete: user.is_profile_complete,
                 createdAt: user.createdAt,
             },
         });
@@ -221,6 +210,7 @@ const login = async (req, res) => {
                 trust_score: user.trust_score,
                 followers_count: user.followers?.length || 0,
                 following_count: user.following?.length || 0,
+                is_profile_complete: user.is_profile_complete,
                 createdAt: user.createdAt,
             },
         });
@@ -321,6 +311,7 @@ const getProfile = async (req, res) => {
                 followers_count: user.followers?.length || 0,
                 following_count: user.following?.length || 0,
                 profile_completion: computeProfileCompletion(user).percent,
+                is_profile_complete: user.is_profile_complete,
                 resources_count: resourcesCount,
             },
             recentResources,
@@ -388,6 +379,7 @@ const getPublicProfile = async (req, res) => {
                 followers_count: fullUser.followers?.length || 0,
                 following_count: fullUser.following?.length || 0,
                 profile_completion: computeProfileCompletion(user).percent,
+                is_profile_complete: user.is_profile_complete,
                 resources_count: resourcesCount,
                 isFollowing,
                 createdAt: user.createdAt,
@@ -410,13 +402,26 @@ const updateProfile = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Unauthorized. You can only update your own profile.' });
         }
 
-        const { name, phone_number, course, batch, semester, bio, profile_image } = req.body;
+        const { name, roll_number, phone_number, course, batch, semester, bio, profile_image } = req.body;
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
         if (name) user.name = name;
+        // roll_number: allow setting it once, then it's locked
+        if (roll_number !== undefined && roll_number.trim() !== '') {
+            if (user.roll_number && user.roll_number.trim() !== '') {
+                // Already set — don't allow changing
+            } else {
+                // Check uniqueness before setting
+                const existing = await User.findOne({ roll_number: roll_number.toUpperCase(), _id: { $ne: userId } });
+                if (existing) {
+                    return res.status(409).json({ success: false, message: 'This Roll Number is already taken by another user.' });
+                }
+                user.roll_number = roll_number.toUpperCase();
+            }
+        }
         if (phone_number !== undefined) user.phone_number = phone_number;
         if (course !== undefined) user.course = course;
         if (batch !== undefined) user.batch = batch;
@@ -468,6 +473,7 @@ const updateProfile = async (req, res) => {
                 followers_count: user.followers?.length || 0,
                 following_count: user.following?.length || 0,
                 profile_completion: newCompletion.percent,
+                is_profile_complete: user.is_profile_complete,
                 createdAt: user.createdAt,
             },
         });
