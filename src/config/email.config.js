@@ -18,43 +18,85 @@ const emailWrapper = (content) => `
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--[if mso]>
+  <style>body,table,td{font-family:Arial,Helvetica,sans-serif!important;}</style>
+  <![endif]-->
 </head>
-<body style="margin:0; padding:0; background:#f1f5f9; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-  <div style="max-width:560px; margin:40px auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.06);">
-    
-    <!-- Header -->
-    <div style="background:linear-gradient(135deg,#4f46e5 0%,#6366f1 50%,#818cf8 100%); padding:32px 40px; text-align:center;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-        <tr>
-          <td align="center">
-            <div style="width:44px; height:44px; background:rgba(255,255,255,0.2); border-radius:12px; display:inline-block; line-height:44px; font-size:22px;">📦</div>
-          </td>
-        </tr>
-        <tr>
-          <td align="center" style="padding-top:12px;">
-            <h1 style="margin:0; color:#ffffff; font-size:22px; font-weight:700; letter-spacing:-0.3px;">CampusCrate</h1>
-            <p style="margin:4px 0 0; color:rgba(255,255,255,0.75); font-size:12px; text-transform:uppercase; letter-spacing:1.5px;">Campus Resource Exchange</p>
-          </td>
-        </tr>
-      </table>
-    </div>
+<body style="margin:0; padding:0; background-color:#F1F0F6; font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; -webkit-font-smoothing:antialiased;">
+  
+  <!-- Outer spacer -->
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#F1F0F6;">
+    <tr>
+      <td align="center" style="padding:48px 16px;">
 
-    <!-- Body -->
-    <div style="padding:36px 40px 40px;">
-      ${content}
-    </div>
+        <!-- Main card -->
+        <table role="presentation" width="520" cellspacing="0" cellpadding="0" border="0" style="max-width:520px; width:100%; background-color:#FFFFFF; border-radius:20px; overflow:hidden; box-shadow:0 8px 40px rgba(91,91,214,0.08), 0 1px 4px rgba(0,0,0,0.04);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#2D2B55; padding:36px 40px 30px; text-align:center;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center">
+                    <div style="width:50px; height:50px; background-color:rgba(255,255,255,0.12); border-radius:14px; display:inline-block; line-height:50px; font-size:24px;">📦</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top:14px;">
+                    <h1 style="margin:0; color:#FFFFFF; font-size:24px; font-weight:800; letter-spacing:-0.5px;">CampusCrate</h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top:6px;">
+                    <p style="margin:0; color:rgba(255,255,255,0.55); font-size:11px; text-transform:uppercase; letter-spacing:2.5px; font-weight:600;">Campus Resource Exchange</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    <!-- Footer -->
-    <div style="background:#f8fafc; border-top:1px solid #e2e8f0; padding:20px 40px; text-align:center;">
-      <p style="margin:0; color:#94a3b8; font-size:11px; line-height:1.6;">
-        This is an automated message from CampusCrate.<br/>
-        Please do not reply to this email.
-      </p>
-      <p style="margin:8px 0 0; color:#cbd5e1; font-size:10px;">
-        &copy; ${new Date().getFullYear()} CampusCrate. All rights reserved.
-      </p>
-    </div>
-  </div>
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 36px;">
+              ${content}
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <div style="height:1px; background-color:#EEEDF5;"></div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px 32px; text-align:center;">
+              <p style="margin:0 0 6px; color:#A09CB2; font-size:11px; line-height:1.7;">
+                This is an automated message from CampusCrate.<br/>
+                Please do not reply to this email.
+              </p>
+              <p style="margin:0; color:#C7C4D6; font-size:10px;">
+                &copy; ${new Date().getFullYear()} CampusCrate &middot; All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Bottom branding -->
+        <table role="presentation" width="520" cellspacing="0" cellpadding="0" border="0" style="max-width:520px; width:100%;">
+          <tr>
+            <td align="center" style="padding:20px 0 0;">
+              <p style="margin:0; color:#B0ADBE; font-size:10px; letter-spacing:0.5px;">
+                Sent with ❤️ from the CampusCrate team
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
 `;
@@ -67,33 +109,56 @@ const emailWrapper = (content) => `
  */
 const sendOtpEmail = async (toEmail, otp, purpose = 'signup') => {
     const subject = purpose === 'signup'
-        ? 'CampusCrate - Verify Your Email'
-        : 'CampusCrate - Login OTP';
+        ? 'Verify your email — CampusCrate'
+        : 'Your login code — CampusCrate';
+
+    const heading = purpose === 'signup'
+        ? 'Verify Your Email'
+        : 'Login Verification';
 
     const purposeText = purpose === 'signup'
-        ? 'Welcome! Use the code below to verify your email and get started.'
-        : 'Use the code below to securely log into your account.';
+        ? "Welcome to CampusCrate! Use the verification code below to confirm your email address and activate your account."
+        : "Use the code below to securely log into your CampusCrate account.";
+
+    const otpDigits = otp.toString().split('').map(d =>
+        `<td align="center" style="width:44px; height:52px; background-color:#F5F3FF; border:1.5px solid #E0DDEF; border-radius:10px; font-size:24px; font-weight:800; color:#2D2B55; font-family:'Segoe UI',Roboto,monospace; letter-spacing:0;">${d}</td>`
+    ).join('<td style="width:8px;"></td>');
 
     const content = `
-      <h2 style="margin:0 0 8px; color:#0f172a; font-size:20px; font-weight:700;">
-        ${purpose === 'signup' ? 'Verify Your Email' : 'Login Verification'}
+      <h2 style="margin:0 0 8px; color:#1E1B3A; font-size:21px; font-weight:700; letter-spacing:-0.3px;">
+        ${heading}
       </h2>
-      <p style="margin:0 0 28px; color:#64748b; font-size:14px; line-height:1.6;">
+      <p style="margin:0 0 28px; color:#6B6880; font-size:14px; line-height:1.7;">
         ${purposeText}
       </p>
 
-      <div style="background:#f8fafc; border:2px dashed #c7d2fe; border-radius:14px; padding:24px; text-align:center; margin:0 0 28px;">
-        <p style="margin:0 0 6px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:2px; font-weight:600;">Your Verification Code</p>
-        <h2 style="margin:0; color:#4f46e5; font-size:38px; letter-spacing:10px; font-weight:800;">${otp}</h2>
+      <!-- OTP Code Box -->
+      <div style="background-color:#FAFAFF; border:1px solid #EEEDF5; border-radius:16px; padding:28px 20px; margin:0 0 28px; text-align:center;">
+        <p style="margin:0 0 14px; color:#9793A8; font-size:11px; text-transform:uppercase; letter-spacing:2.5px; font-weight:700;">Verification Code</p>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto;">
+          <tr>
+            ${otpDigits}
+          </tr>
+        </table>
       </div>
 
-      <div style="background:#fffbeb; border-left:4px solid #f59e0b; border-radius:0 8px 8px 0; padding:12px 16px; margin:0 0 24px;">
-        <p style="margin:0; color:#92400e; font-size:13px; line-height:1.5;">
-          ⏱ This code expires in <strong>10 minutes</strong>. Do not share this code with anyone.
-        </p>
-      </div>
+      <!-- Warning callout -->
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">
+        <tr>
+          <td style="background-color:#FFF9F0; border:1px solid #F5E6CE; border-radius:12px; padding:14px 18px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+              <tr>
+                <td style="vertical-align:top; padding-right:10px; font-size:16px;">⏱</td>
+                <td style="color:#7A5D2E; font-size:13px; line-height:1.55;">
+                  This code expires in <strong>10 minutes</strong>. Never share this code with anyone — CampusCrate will never ask for it.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
 
-      <p style="margin:0; color:#94a3b8; font-size:12px; text-align:center;">
+      <p style="margin:0; color:#A09CB2; font-size:12px; text-align:center; line-height:1.6;">
         If you didn't request this, you can safely ignore this email.
       </p>
     `;
@@ -116,32 +181,43 @@ const sendOtpEmail = async (toEmail, otp, purpose = 'signup') => {
  * @param {string} userName - User's display name
  */
 const sendSuspensionEmail = async (toEmail, userName) => {
-    const subject = 'CampusCrate - Account Suspended';
+    const subject = 'Account suspended — CampusCrate';
 
     const content = `
-      <h2 style="margin:0 0 8px; color:#0f172a; font-size:20px; font-weight:700;">
+      <h2 style="margin:0 0 8px; color:#1E1B3A; font-size:21px; font-weight:700; letter-spacing:-0.3px;">
         Account Suspended
       </h2>
-      <p style="margin:0 0 24px; color:#64748b; font-size:14px; line-height:1.6;">
-        Hi <strong>${userName}</strong>, your CampusCrate account has been suspended by an administrator.
+      <p style="margin:0 0 28px; color:#6B6880; font-size:14px; line-height:1.7;">
+        Hi <strong style="color:#1E1B3A;">${userName}</strong>, your CampusCrate account has been suspended by an administrator.
       </p>
 
-      <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:14px; padding:24px; text-align:center; margin:0 0 28px;">
-        <div style="font-size:36px; margin-bottom:8px;">🚫</div>
-        <h3 style="margin:0 0 8px; color:#dc2626; font-size:16px; font-weight:700;">Access Restricted</h3>
-        <p style="margin:0; color:#991b1b; font-size:13px; line-height:1.5;">
-          You will not be able to log in or access platform features until your account is reinstated.
+      <!-- Status card -->
+      <div style="background-color:#FDF2F2; border:1px solid #F5D5D5; border-radius:16px; padding:28px 24px; text-align:center; margin:0 0 28px;">
+        <div style="width:52px; height:52px; background-color:#FEE2E2; border-radius:50%; display:inline-block; line-height:52px; font-size:24px; margin-bottom:12px;">🚫</div>
+        <h3 style="margin:0 0 8px; color:#991B1B; font-size:16px; font-weight:700;">Access Restricted</h3>
+        <p style="margin:0; color:#7F1D1D; font-size:13px; line-height:1.6;">
+          You will not be able to log in or access<br/>platform features until your account is reinstated.
         </p>
       </div>
 
-      <div style="background:#f0f9ff; border-left:4px solid #3b82f6; border-radius:0 8px 8px 0; padding:12px 16px; margin:0 0 24px;">
-        <p style="margin:0; color:#1e40af; font-size:13px; line-height:1.5;">
-          💬 If you believe this is a mistake, please contact the admin at <strong>${serverConfig.SMTP_FROM_EMAIL}</strong> for assistance.
-        </p>
-      </div>
+      <!-- Info callout -->
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">
+        <tr>
+          <td style="background-color:#F0F4FE; border:1px solid #D6DEF5; border-radius:12px; padding:14px 18px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+              <tr>
+                <td style="vertical-align:top; padding-right:10px; font-size:16px;">💬</td>
+                <td style="color:#2E3F6E; font-size:13px; line-height:1.55;">
+                  If you believe this is a mistake, please contact us at <strong>${serverConfig.SMTP_FROM_EMAIL}</strong> for assistance.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
 
-      <p style="margin:0; color:#94a3b8; font-size:12px; text-align:center;">
-        This action was taken to maintain community safety.
+      <p style="margin:0; color:#A09CB2; font-size:12px; text-align:center; line-height:1.6;">
+        This action was taken to maintain community safety and trust.
       </p>
     `;
 
@@ -163,26 +239,38 @@ const sendSuspensionEmail = async (toEmail, userName) => {
  * @param {string} userName - User's display name
  */
 const sendReactivationEmail = async (toEmail, userName) => {
-    const subject = 'CampusCrate - Account Reactivated';
+    const subject = 'Welcome back! Your account is active — CampusCrate';
 
     const content = `
-      <h2 style="margin:0 0 8px; color:#0f172a; font-size:20px; font-weight:700;">
-        Account Reactivated! 🎉
+      <h2 style="margin:0 0 8px; color:#1E1B3A; font-size:21px; font-weight:700; letter-spacing:-0.3px;">
+        Account Reactivated
       </h2>
-      <p style="margin:0 0 24px; color:#64748b; font-size:14px; line-height:1.6;">
-        Hi <strong>${userName}</strong>, great news! Your CampusCrate account has been reactivated by an administrator.
+      <p style="margin:0 0 28px; color:#6B6880; font-size:14px; line-height:1.7;">
+        Hi <strong style="color:#1E1B3A;">${userName}</strong>, great news! Your CampusCrate account has been reactivated by an administrator.
       </p>
 
-      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:14px; padding:24px; text-align:center; margin:0 0 28px;">
-        <div style="font-size:36px; margin-bottom:8px;">✅</div>
-        <h3 style="margin:0 0 8px; color:#16a34a; font-size:16px; font-weight:700;">Access Restored</h3>
-        <p style="margin:0; color:#15803d; font-size:13px; line-height:1.5;">
-          You can now log in and use all platform features as before.
+      <!-- Status card -->
+      <div style="background-color:#F0FAF4; border:1px solid #C6EDD5; border-radius:16px; padding:28px 24px; text-align:center; margin:0 0 28px;">
+        <div style="width:52px; height:52px; background-color:#DCFCE7; border-radius:50%; display:inline-block; line-height:52px; font-size:24px; margin-bottom:12px;">✅</div>
+        <h3 style="margin:0 0 8px; color:#166534; font-size:16px; font-weight:700;">Access Restored</h3>
+        <p style="margin:0; color:#15803D; font-size:13px; line-height:1.6;">
+          You can now log in and use all platform<br/>features just like before.
         </p>
       </div>
 
-      <p style="margin:0; color:#94a3b8; font-size:12px; text-align:center;">
-        Welcome back to the CampusCrate community!
+      <!-- CTA button -->
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 28px;">
+        <tr>
+          <td align="center">
+            <a href="#" style="display:inline-block; background-color:#2D2B55; color:#FFFFFF; text-decoration:none; padding:14px 36px; border-radius:12px; font-size:14px; font-weight:700; letter-spacing:0.2px;">
+              Open CampusCrate
+            </a>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:0; color:#A09CB2; font-size:12px; text-align:center; line-height:1.6;">
+        Welcome back to the CampusCrate community! We're glad to have you.
       </p>
     `;
 
