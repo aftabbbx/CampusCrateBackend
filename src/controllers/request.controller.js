@@ -1,6 +1,6 @@
 const Request = require('../models/Request');
 const Resource = require('../models/Resource');
-const Notification = require('../models/Notification');
+const emitNotification = require('../utils/emitNotification');
 
 // ─── SEND REQUEST ───────────────────────────────────────────────────
 const sendRequest = async (req, res) => {
@@ -43,9 +43,10 @@ const sendRequest = async (req, res) => {
             status: 'Pending',
         });
 
-        // Auto-notification to resource owner
-        await Notification.create({
-            user_id: resource.owner_id,
+        // Auto-notification to resource owner (real-time)
+        await emitNotification({
+            user_id: resource.owner_id.toString(),
+            from_user_id: req.user.userId,
             title: 'New Request',
             message: `Someone requested your resource "${resource.title}"`,
             type: 'request',
@@ -121,9 +122,10 @@ const acceptRequest = async (req, res) => {
             { status: 'Rejected' }
         );
 
-        // Notification to sender
-        await Notification.create({
-            user_id: request.sender_id,
+        // Notification to sender (real-time)
+        await emitNotification({
+            user_id: request.sender_id.toString(),
+            from_user_id: req.user.userId,
             title: 'Request Accepted',
             message: 'Your request has been accepted! You can now chat with the owner.',
             type: 'request',
@@ -156,9 +158,10 @@ const rejectRequest = async (req, res) => {
         request.status = 'Rejected';
         await request.save();
 
-        // Notification to sender
-        await Notification.create({
-            user_id: request.sender_id,
+        // Notification to sender (real-time)
+        await emitNotification({
+            user_id: request.sender_id.toString(),
+            from_user_id: req.user.userId,
             title: 'Request Rejected',
             message: 'Your request has been rejected.',
             type: 'request',
@@ -194,16 +197,16 @@ const completeRequest = async (req, res) => {
         // Mark resource as Exchanged
         await Resource.findByIdAndUpdate(request.resource_id, { status: 'Exchanged' });
 
-        // Notification to both users
-        await Notification.create({
-            user_id: request.sender_id,
+        // Notification to both users (real-time)
+        await emitNotification({
+            user_id: request.sender_id.toString(),
             title: 'Deal Completed',
             message: 'The exchange has been completed successfully! 🎉',
             type: 'deal',
         });
 
-        await Notification.create({
-            user_id: request.receiver_id,
+        await emitNotification({
+            user_id: request.receiver_id.toString(),
             title: 'Deal Completed',
             message: 'You have successfully completed the exchange! 🎉',
             type: 'deal',

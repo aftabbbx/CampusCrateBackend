@@ -6,6 +6,7 @@ const Notification = require('../models/Notification');
 const serverConfig = require('../config/server.config');
 const { sendOtpEmail } = require('../config/email.config');
 const generateOtp = require('../utils/generateOtp');
+const emitNotification = require('../utils/emitNotification');
 
 // ─── SIGNUP ─────────────────────────────────────────────────────────
 const signup = async (req, res) => {
@@ -511,8 +512,8 @@ const followUser = async (req, res) => {
         target.followers.push(userId);
         await Promise.all([user.save(), target.save()]);
 
-        // ─── Create follow notification ──────────────────────────
-        await Notification.create({
+        // ─── Create follow notification + real-time emit ─────────
+        await emitNotification({
             user_id: targetId,
             from_user_id: userId,
             title: 'New Follower',
