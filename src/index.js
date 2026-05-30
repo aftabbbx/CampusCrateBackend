@@ -11,6 +11,7 @@ const messageRoutes = require('./routes/message.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const adminRoutes = require('./routes/admin.routes');
 const uploadRoutes = require('./routes/upload.routes');
+const wishlistRoutes = require('./routes/wishlist.routes');
 
 const app = express();
 const server = http.createServer(app);
@@ -36,6 +37,7 @@ app.use('/message', messageRoutes);
 app.use('/notification', notificationRoutes);
 app.use('/admin', adminRoutes);
 app.use('/upload', uploadRoutes);
+app.use('/wishlist', wishlistRoutes);
 
 // ─── Start Server ────────────────────────────────────────────────────
 server.listen(serverConfig.PORT, async () => {
