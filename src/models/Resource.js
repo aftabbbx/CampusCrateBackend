@@ -53,6 +53,14 @@ const resourceSchema = new mongoose.Schema(
             enum: ["Available", "Pending", "Exchanged"],
             default: "Available",
         },
+        is_deleted: {
+            type: Boolean,
+            default: false,
+        },
+        deleted_at: {
+            type: Date,
+            default: null,
+        },
     },
     { timestamps: true }
 );

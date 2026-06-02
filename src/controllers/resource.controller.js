@@ -39,7 +39,7 @@ const createResource = async (req, res) => {
 // ─── GET ALL RESOURCES ──────────────────────────────────────────────
 const getAllResources = async (req, res) => {
     try {
-        const resources = await Resource.find({ status: 'Available' })
+        const resources = await Resource.find({ status: 'Available', is_deleted: { $ne: true } })
             .populate('owner_id', 'name username email profile_image semester roll_number')
             .sort({ createdAt: -1 });
 
@@ -70,7 +70,7 @@ const getResourceById = async (req, res) => {
 // ─── GET MY RESOURCES ───────────────────────────────────────────────
 const getMyResources = async (req, res) => {
     try {
-        const resources = await Resource.find({ owner_id: req.user.userId })
+        const resources = await Resource.find({ owner_id: req.user.userId, is_deleted: { $ne: true } })
             .sort({ createdAt: -1 });
 
         return res.status(200).json({ success: true, count: resources.length, resources });
@@ -118,7 +118,7 @@ const updateResource = async (req, res) => {
     }
 };
 
-// ─── DELETE RESOURCE ────────────────────────────────────────────────
+// ─── DELETE RESOURCE (Soft Delete) ──────────────────────────────────
 const deleteResource = async (req, res) => {
     try {
         const resource = await Resource.findById(req.params.id);
@@ -131,7 +131,9 @@ const deleteResource = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Unauthorized. You can only delete your own resources.' });
         }
 
-        await Resource.findByIdAndDelete(req.params.id);
+        resource.is_deleted = true;
+        resource.deleted_at = new Date();
+        await resource.save();
 
         return res.status(200).json({ success: true, message: 'Resource deleted successfully' });
     } catch (error) {
@@ -144,7 +146,7 @@ const deleteResource = async (req, res) => {
 const searchResources = async (req, res) => {
     try {
         const { keyword, category, type, condition } = req.query;
-        const filter = { status: 'Available' };
+        const filter = { status: 'Available', is_deleted: { $ne: true } };
 
         if (keyword) {
             filter.$or = [
