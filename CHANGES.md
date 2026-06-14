@@ -4,6 +4,36 @@ All changes made to the project are documented here.
 
 ---
 
+## [2026-06-14] — Mark as Sold Feature (Branch: feature/mark-as-sold)
+
+### Backend
+
+#### `src/models/Resource.js` — Updated
+- Added `"Sold"` to `status` enum → now `["Available", "Pending", "Exchanged", "Sold"]`
+- `Sold` = owner manually marks listing as sold (OLX-style)
+- `Exchanged` = deal completed via platform request flow (unchanged)
+
+#### `src/controllers/resource.controller.js` — Updated
+- Added `markResourceSold` controller:
+  - Owner-only (403 for non-owners)
+  - Toggles `Available → Sold` and `Sold → Available`
+  - Blocks toggle if resource is `Pending` or `Exchanged` (those are managed by request flow)
+  - Returns updated resource
+
+#### `src/routes/resource.routes.js` — Updated
+- Added `PATCH /resource/:id/mark-sold` → owner-only toggle route
+
+#### `src/controllers/message.controller.js` — Updated
+- Added `Resource` import
+- Added optional `resource_id` guard in `sendMessage`:
+  - If `resource_id` provided in request body AND resource status is `Sold` → returns 403
+  - Direct API hits with resource_id are blocked server-side
+
+#### `/request/send` guard — already exists, no change needed
+- Existing check `if (resource.status !== 'Available')` automatically blocks new requests for Sold resources
+
+---
+
 ## [2026-05-31] — Backend + Frontend Setup & Fixes
 
 ### Backend

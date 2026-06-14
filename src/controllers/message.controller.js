@@ -1,6 +1,7 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const Resource = require('../models/Resource');
 
 // ─── SEND MESSAGE ───────────────────────────────────────────────────
 const sendMessage = async (req, res) => {
@@ -22,6 +23,18 @@ const sendMessage = async (req, res) => {
 
         if (receiver_id === req.user.userId) {
             return res.status(400).json({ success: false, message: 'You cannot message yourself' });
+        }
+
+        // Guard: if resource_id provided, block if that resource is Sold
+        const { resource_id } = req.body;
+        if (resource_id) {
+            const resource = await Resource.findById(resource_id);
+            if (resource && resource.status === 'Sold') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'This resource has been marked as Sold. You cannot initiate a chat for it.',
+                });
+            }
         }
 
         const receiver = await User.findById(receiver_id);
