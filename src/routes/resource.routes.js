@@ -25,6 +25,7 @@ router.post('/upload', authenticate, requireProfileComplete, (req, res) => {
 });
 router.post('/create', authenticate, requireProfileComplete, resourceController.createResource);
 router.put('/update/:id', authenticate, resourceController.updateResource);
+router.patch('/:id/mark-sold', authenticate, resourceController.markResourceSold);
 router.delete('/delete/:id', authenticate, resourceController.deleteResource);
 
 // ─── Public (keep /:id last to avoid catching named routes) ─────────

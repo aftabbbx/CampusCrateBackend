@@ -50,7 +50,7 @@ const resourceSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ["Available", "Pending", "Exchanged"],
+            enum: ["Available", "Pending", "Exchanged", "Sold"],
             default: "Available",
         },
         is_deleted: {
