@@ -39,7 +39,7 @@ const createResource = async (req, res) => {
 // ─── GET ALL RESOURCES ──────────────────────────────────────────────
 const getAllResources = async (req, res) => {
     try {
-        const resources = await Resource.find({ status: 'Available', is_deleted: { $ne: true } })
+        const resources = await Resource.find({ status: { $in: ['Available', 'Sold'] }, is_deleted: { $ne: true } })
             .populate('owner_id', 'name username email profile_image semester roll_number')
             .sort({ createdAt: -1 });
 
@@ -181,7 +181,7 @@ const markResourceSold = async (req, res) => {
 const searchResources = async (req, res) => {
     try {
         const { keyword, category, type, condition } = req.query;
-        const filter = { status: 'Available', is_deleted: { $ne: true } };
+        const filter = { status: { $in: ['Available', 'Sold'] }, is_deleted: { $ne: true } };
 
         if (keyword) {
             filter.$or = [
