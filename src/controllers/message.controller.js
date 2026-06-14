@@ -49,6 +49,7 @@ const sendMessage = async (req, res) => {
             message_type: type,
             media_url: media_url || null,
             is_read: false,
+            resource_id: resource_id || null,
         });
 
         // ─── Smart Notification: Only on FIRST message in conversation ──
@@ -87,12 +88,14 @@ const getConversation = async (req, res) => {
     try {
         const otherUserId = req.params.userId;
         const myId = req.user.userId;
+        const { resource_id } = req.query;
 
         const messages = await Message.find({
             $or: [
                 { sender_id: myId, receiver_id: otherUserId },
                 { sender_id: otherUserId, receiver_id: myId },
             ],
+            resource_id: resource_id || null,
         })
             .sort({ createdAt: 1 })
             .populate('sender_id', 'name profile_image')
@@ -122,12 +125,16 @@ const getConversationList = async (req, res) => {
             { $sort: { createdAt: -1 } },
             {
                 $group: {
+                    // Compound key: each (user + resource) pair = separate conversation thread
                     _id: {
-                        $cond: [
-                            { $eq: ['$sender_id', myId] },
-                            '$receiver_id',
-                            '$sender_id',
-                        ],
+                        otherUser: {
+                            $cond: [
+                                { $eq: ['$sender_id', myId] },
+                                '$receiver_id',
+                                '$sender_id',
+                            ],
+                        },
+                        resource_id: '$resource_id',
                     },
                     lastMessage: { $first: '$message' },
                     lastMessageType: { $first: '$message_type' },
@@ -152,8 +159,14 @@ const getConversationList = async (req, res) => {
         ]);
 
         // Populate user info
-        const userIds = messages.map((m) => m._id);
+        const userIds = [...new Set(messages.map((m) => m._id.otherUser))];
         const users = await User.find({ _id: { $in: userIds } }).select('name email profile_image last_active roll_number');
+
+        // Populate resource info
+        const resourceIds = [...new Set(messages.map((m) => m._id.resource_id).filter(Boolean))];
+        const resources = resourceIds.length > 0
+            ? await Resource.find({ _id: { $in: resourceIds } }).select('title status image_url price type')
+            : [];
 
         // Add online status
         const { getOnlineUsers } = require('../config/socket.config');
@@ -165,14 +178,18 @@ const getConversationList = async (req, res) => {
         }
 
         const conversations = messages.map((m) => {
-            const user = users.find((u) => u._id.toString() === m._id.toString());
+            const otherUserId = m._id.otherUser;
+            const resourceId = m._id.resource_id;
+            const user = users.find((u) => u._id.toString() === otherUserId.toString());
+            const resource = resourceId ? resources.find((r) => r._id.toString() === resourceId.toString()) : null;
             return {
                 user,
+                resource: resource ? { _id: resource._id, title: resource.title, status: resource.status, price: resource.price, type: resource.type, image_url: resource.image_url } : null,
                 lastMessage: m.lastMessageType === 'image' ? '📷 Photo' : m.lastMessageType === 'voice' ? '🎙️ Voice note' : m.lastMessage,
                 lastMessageType: m.lastMessageType,
                 lastMessageAt: m.lastMessageAt,
                 unreadCount: m.unreadCount,
-                isOnline: onlineUsers.has(m._id.toString()),
+                isOnline: onlineUsers.has(otherUserId.toString()),
             };
         });
 
@@ -188,9 +205,10 @@ const markAsRead = async (req, res) => {
     try {
         const otherUserId = req.params.userId;
         const myId = req.user.userId;
+        const { resource_id } = req.query;
 
         await Message.updateMany(
-            { sender_id: otherUserId, receiver_id: myId, is_read: false },
+            { sender_id: otherUserId, receiver_id: myId, is_read: false, resource_id: resource_id || null },
             { is_read: true }
         );
 
