@@ -34,6 +34,11 @@ const messageSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        resource_id: {
+            type: String,
+            ref: 'Resource',
+            default: null,
+        },
     },
     { timestamps: true }
 );
