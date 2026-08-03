@@ -17,7 +17,7 @@ const authenticateAdmin = async (req, res, next) => {
         const decoded = jwt.verify(token, serverConfig.JWT_SECRET);
 
         // Verify this is actually an admin user
-        const admin = await User.findById(decoded.adminId);
+        const admin = await User.findById(decoded.userId);
         if (!admin || admin.role !== 'admin') {
             return res.status(403).json({
                 success: false,
@@ -25,7 +25,7 @@ const authenticateAdmin = async (req, res, next) => {
             });
         }
 
-        req.admin = decoded; // { adminId, email, role, iat, exp }
+        req.admin = decoded; // { userId, email, iat, exp }
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
