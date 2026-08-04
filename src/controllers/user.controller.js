@@ -134,6 +134,7 @@ const verifyOtp = async (req, res) => {
                 trust_score: user.trust_score,
                 profile_image: user.profile_image,
                 is_profile_complete: user.is_profile_complete,
+                role: user.role,
                 createdAt: user.createdAt,
             },
         });
@@ -212,6 +213,7 @@ const login = async (req, res) => {
                 followers_count: user.followers?.length || 0,
                 following_count: user.following?.length || 0,
                 is_profile_complete: user.is_profile_complete,
+                role: user.role,
                 createdAt: user.createdAt,
             },
         });
@@ -313,6 +315,7 @@ const getProfile = async (req, res) => {
                 following_count: user.following?.length || 0,
                 profile_completion: computeProfileCompletion(user).percent,
                 is_profile_complete: user.is_profile_complete,
+                role: user.role,
                 resources_count: resourcesCount,
             },
             recentResources,
@@ -383,6 +386,7 @@ const getPublicProfile = async (req, res) => {
                 is_profile_complete: user.is_profile_complete,
                 resources_count: resourcesCount,
                 isFollowing,
+                role: user.role,
                 createdAt: user.createdAt,
             },
             resources,
@@ -475,6 +479,7 @@ const updateProfile = async (req, res) => {
                 following_count: user.following?.length || 0,
                 profile_completion: newCompletion.percent,
                 is_profile_complete: user.is_profile_complete,
+                role: user.role,
                 createdAt: user.createdAt,
             },
         });
