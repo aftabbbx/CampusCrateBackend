@@ -38,7 +38,7 @@ CampusCrateBackend/
 │   │   ├── User.js                     # Student accounts
 │   │   ├── Resource.js                 # Listings (books, notes, equipment)
 │   │   ├── Request.js                  # Exchange/borrow requests
-│   │   ├── Message.js                  # Chat messages
+│   │   ├── Message.js                  # Chat messages (resource-scoped threads)
 │   │   ├── Notification.js             # In-app notifications
 │   │   └── Wishlist.js                 # Saved/favourited resources
 │   ├── controllers/                    # Business logic (one file per model)
@@ -118,17 +118,25 @@ CLOUDINARY_API_SECRET=your_api_secret
 ### Resource (`resources` collection)
 | Field | Type | Notes |
 |-------|------|-------|
-| `_id` | String | Auto: `RSC-US-001`, `RSC-US-002`, ... |
+| `_id` | String | Auto: `RSC-001`, `RSC-002`, ... |
 | `title` | String | Required |
 | `description` | String | |
-| `category` | String | Books / Notes / Equipment / Other |
+| `category` | String | Book / Notes / Stationery / Project / Other |
+| `type` | String | Free / Paid / Exchange |
 | `price` | Number | 0 = Free |
 | `condition` | String | New / Good / Fair |
 | `image_url` | String | Cloudinary URL |
+| `location` | String | Campus location |
 | `owner_id` | String | Ref → User._id |
-| `status` | String | Available / Sold / Reserved |
+| `status` | String | `Available` / `Pending` / `Exchanged` / `Sold` |
 | `is_deleted` | Boolean | Soft delete flag (default: false) |
 | `deleted_at` | Date | Soft delete timestamp |
+
+**Status values:**
+- `Available` — listed, open for requests and chat
+- `Pending` — a request has been accepted (locked by request flow)
+- `Exchanged` — deal completed via platform request flow
+- `Sold` — manually marked by owner (OLX-style toggle)
 
 ### Request (`requests` collection)
 | Field | Type | Notes |
@@ -142,11 +150,17 @@ CLOUDINARY_API_SECRET=your_api_secret
 ### Message (`messages` collection)
 | Field | Type | Notes |
 |-------|------|-------|
+| `_id` | String | Auto: `MSG-001`, ... |
 | `sender_id` | String | Ref → User |
 | `receiver_id` | String | Ref → User |
-| `content` | String | Message text |
+| `message` | String | Message text |
+| `message_type` | String | `text` / `image` / `voice` |
+| `media_url` | String | Cloudinary URL (image/voice) |
+| `resource_id` | String | Ref → Resource (optional — links message to a product) |
 | `is_read` | Boolean | |
 | `createdAt` | Date | |
+
+> **Note:** `resource_id` enables resource-scoped conversation threads. Each (user pair + resource) forms its own separate chat thread, like OLX.
 
 ### Notification (`notifications` collection)
 | Field | Type | Notes |
@@ -198,50 +212,27 @@ CLOUDINARY_API_SECRET=your_api_secret
 | GET | `/user/followers/:id` | No | Get user's followers list |
 | GET | `/user/following/:id` | No | Get user's following list |
 
-**Signup Body:**
-```json
-{
-  "name": "Aftab Ali",
-  "email": "aftab@college.com",
-  "password": "Campus@123",
-  "roll_number": "CSE2021001"
-}
-```
-
-**Login Body:**
-```json
-{
-  "email": "aftab@college.com",
-  "password": "Campus@123"
-}
-```
-
 ---
 
 ### Resources `/resource`
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| GET | `/resource/all` | No | All available resources |
-| GET | `/resource/search?q=book&category=Books` | No | Search with filters |
+| GET | `/resource/all` | No | All Available + Sold resources |
+| GET | `/resource/search` | No | Search with filters (`?keyword=&category=&type=&condition=`) |
 | GET | `/resource/user/my` | JWT | My listed resources |
 | GET | `/resource/:id` | No | Single resource detail |
 | POST | `/resource/create` | JWT + ProfileComplete | Create new listing |
 | PUT | `/resource/update/:id` | JWT | Edit existing listing |
 | DELETE | `/resource/delete/:id` | JWT | Soft delete (hidden, not erased) |
+| PATCH | `/resource/:id/mark-sold` | JWT | Toggle Sold ↔ Available (owner only) |
 | POST | `/resource/upload` | JWT + ProfileComplete | Upload resource image to Cloudinary |
 
-**Create Resource Body:**
-```json
-{
-  "title": "Engineering Mathematics Book",
-  "description": "3rd sem, good condition",
-  "category": "Books",
-  "price": 150,
-  "condition": "Good",
-  "image_url": "https://cloudinary.com/..."
-}
-```
+**Mark as Sold rules:**
+- Only the resource owner can toggle
+- `Available` → `Sold` or `Sold` → `Available`
+- Cannot toggle if status is `Pending` or `Exchanged` (managed by request flow)
+- Sold resources still appear in `/resource/all` but with sold treatment on frontend
 
 ---
 
@@ -256,14 +247,6 @@ CLOUDINARY_API_SECRET=your_api_secret
 | PUT | `/request/:id/reject` | JWT | Reject a request |
 | PUT | `/request/:id/complete` | JWT | Mark exchange as completed |
 
-**Send Request Body:**
-```json
-{
-  "resource_id": "RSC-US-001",
-  "message": "Is this still available?"
-}
-```
-
 ---
 
 ### Messages `/message`
@@ -271,17 +254,23 @@ CLOUDINARY_API_SECRET=your_api_secret
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | POST | `/message/send` | JWT + ProfileComplete | Send a chat message |
-| GET | `/message/conversations` | JWT | All conversation threads |
-| GET | `/message/:userId` | JWT | Chat history with specific user |
-| PUT | `/message/read/:userId` | JWT | Mark messages from user as read |
+| GET | `/message/conversations` | JWT | All conversation threads (grouped by user + resource) |
+| GET | `/message/:userId?resource_id=RSC-001` | JWT | Chat history for specific user + resource thread |
+| PUT | `/message/read/:userId?resource_id=RSC-001` | JWT | Mark thread messages as read |
 
 **Send Message Body:**
 ```json
 {
   "receiver_id": "USR-US-002",
-  "content": "Hi, is the book available?"
+  "message": "Hi, is the book available?",
+  "message_type": "text",
+  "resource_id": "RSC-001"
 }
 ```
+
+> **resource_id** is optional. If provided and the resource is `Sold`, the server returns `403` — chat is blocked for sold items.
+
+**Conversation grouping:** Each `(sender + receiver + resource_id)` triplet is its own thread. A seller with 4 products gets 4 separate chat threads per buyer.
 
 ---
 
@@ -322,6 +311,7 @@ CLOUDINARY_API_SECRET=your_api_secret
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | POST | `/upload/image` | JWT | Upload image to Cloudinary |
+| POST | `/upload/audio` | JWT | Upload voice note to Cloudinary |
 
 ---
 
@@ -332,10 +322,12 @@ Connected at `ws://localhost:3400`
 | Event | Direction | Description |
 |-------|-----------|-------------|
 | `join` | Client → Server | User joins their personal room |
-| `sendMessage` | Client → Server | Send message to another user |
-| `newMessage` | Server → Client | Receive incoming message |
+| `send-message` | Client → Server | Send message to another user |
+| `receive-message` | Server → Client | Receive incoming message |
 | `notification` | Server → Client | Real-time in-app notification |
-| `unreadCount` | Server → Client | Badge count update |
+| `typing` | Client → Server | User is typing |
+| `stop-typing` | Client → Server | User stopped typing |
+| `messages-read` | Client → Server | Messages marked as read |
 
 ---
 
@@ -343,7 +335,8 @@ Connected at `ws://localhost:3400`
 
 Uses `Counter` model to auto-generate readable IDs:
 - Users: `USR-US-001`, `USR-US-002`, ...
-- Resources: `RSC-US-001`, `RSC-US-002`, ...
+- Resources: `RSC-001`, `RSC-002`, ...
+- Messages: `MSG-001`, `MSG-002`, ...
 
 ---
 
@@ -356,13 +349,23 @@ resource.deleted_at = new Date();
 await resource.save();
 ```
 All list queries use `{ is_deleted: { $ne: true } }` to exclude deleted items.
-This handles both `is_deleted: false` and documents where the field doesn't exist yet.
+
+---
+
+## Mark as Sold (OLX-style)
+
+Owner can manually toggle any listing between `Available` and `Sold`:
+- `PATCH /resource/:id/mark-sold` — owner-only toggle
+- Sold resources still appear in public listings but with faded UI treatment
+- Active chats for a sold resource are disabled on the frontend
+- New chat initiation for a sold resource is blocked server-side (403)
+- Cannot mark sold if resource is `Pending` or `Exchanged`
 
 ---
 
 ## Profile Complete Middleware
 
-Some routes (`/resource/create`, `/request/send`, `/message/send`) require the user to have a complete profile (name, roll_number, department, year filled in). If profile is incomplete, the API returns `403` with a message to complete profile first.
+Routes `/resource/create`, `/request/send`, `/message/send` require a complete profile (name, roll_number, department, year). Returns `403` with `profileIncomplete: true` if not complete.
 
 ---
 

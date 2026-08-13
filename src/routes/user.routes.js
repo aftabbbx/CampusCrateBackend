@@ -2,20 +2,8 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user.controller');
 const authenticate = require('../middlewares/auth.middleware');
-const { cloudinary } = require('../config/cloudinary');
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-
-// Profile image upload config (separate from resource images)
-const profileStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'campuscrate/profiles',
-    allowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
-    transformation: [{ width: 400, height: 400, crop: 'fill', gravity: 'face' }],
-  },
-});
-const profileUpload = multer({ storage: profileStorage });
+const { uploadProfile } = require('../config/cloudinary');
+const profileUpload = uploadProfile;
 
 // ─── Public ─────────────────────────────────────────────────────────
 router.post('/signup', userController.signup);

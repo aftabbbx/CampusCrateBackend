@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
+const compression = require('compression');
 const serverConfig = require('./config/server.config');
 const connectDB = require('./config/db.config');
 const { initSocket } = require('./config/socket.config');
@@ -20,9 +21,10 @@ const server = http.createServer(app);
 const io = initSocket(server);
 
 // ─── Middlewares ─────────────────────────────────────────────────────
+app.use(compression());
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ─── Health Check ────────────────────────────────────────────────────
 app.get('/ping', (req, res) => {
