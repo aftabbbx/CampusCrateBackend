@@ -10,8 +10,12 @@ let io;
 const initSocket = (httpServer) => {
     io = new Server(httpServer, {
         cors: {
-            origin: '*',
+            origin: [
+                'https://campus-crate-ui.vercel.app',
+                'http://localhost:5173',
+            ],
             methods: ['GET', 'POST'],
+            credentials: true,
         },
     });
 
