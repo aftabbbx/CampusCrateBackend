@@ -35,6 +35,10 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
+        // Allow all Vercel preview deployments for this project
+        if (origin.endsWith('.vercel.app') && origin.includes('campus-crate')) {
+            return callback(null, true);
+        }
         return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
