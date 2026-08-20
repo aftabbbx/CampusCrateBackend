@@ -55,6 +55,23 @@ app.get('/ping', (req, res) => {
     res.send('pong');
 });
 
+// ─── Diagnostics (check env vars on deployed server) ─────────────────
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        env: {
+            MONGO_URI: !!process.env.MONGO_URI,
+            JWT_SECRET: !!process.env.JWT_SECRET,
+            SMTP_HOST: !!process.env.SMTP_HOST,
+            SMTP_PORT: !!process.env.SMTP_PORT,
+            SMTP_USER: !!process.env.SMTP_USER,
+            SMTP_PASS: !!process.env.SMTP_PASS,
+            SMTP_FROM_EMAIL: !!process.env.SMTP_FROM_EMAIL,
+            CLOUDINARY_CLOUD_NAME: !!process.env.CLOUDINARY_CLOUD_NAME,
+        },
+    });
+});
+
 // ─── Routes ──────────────────────────────────────────────────────────
 app.use('/user', userRoutes);
 app.use('/resource', resourceRoutes);
