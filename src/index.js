@@ -72,20 +72,38 @@ app.get('/health', (req, res) => {
     });
 });
 
-// ─── Test Email (temporary debug — remove after fixing) ──────────────
+// ─── Test Brevo API (temporary debug — remove after fixing) ─────────
 app.get('/test-email', async (req, res) => {
     try {
-        const { transporter } = require('./config/email.config');
-        // Just verify the SMTP connection
-        await transporter.verify();
-        res.json({ success: true, message: 'SMTP connection verified successfully' });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'SMTP connection failed',
-            error: error.message,
-            code: error.code,
+        const apiKey = process.env.BREVO_API_KEY;
+        if (!apiKey) {
+            return res.json({ success: false, message: 'BREVO_API_KEY not set' });
+        }
+
+        // Test with /v3/account endpoint first
+        const accountRes = await fetch('https://api.brevo.com/v3/account', {
+            headers: { 'api-key': apiKey.trim() },
         });
+        const accountData = await accountRes.json();
+
+        if (!accountRes.ok) {
+            return res.json({
+                success: false,
+                message: 'Brevo API auth failed',
+                status: accountRes.status,
+                brevoError: accountData,
+                keyInfo: { prefix: apiKey.substring(0, 12), length: apiKey.length },
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Brevo API key is valid!',
+            account: accountData.email,
+            company: accountData.companyName,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
