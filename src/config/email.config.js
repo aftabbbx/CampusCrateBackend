@@ -7,6 +7,10 @@ const serverConfig = require('./server.config');
 const useBrevoAPI = !!serverConfig.BREVO_API_KEY;
 
 console.log('[EMAIL] Mode:', useBrevoAPI ? 'Brevo HTTP API' : 'SMTP');
+if (useBrevoAPI) {
+    const k = serverConfig.BREVO_API_KEY;
+    console.log('[EMAIL] API Key debug:', { prefix: k.substring(0, 10), length: k.length, trimmedLength: k.trim().length });
+}
 
 // SMTP transporter (local dev fallback)
 const transporter = nodemailer.createTransport({
@@ -27,7 +31,7 @@ const sendViaBrevoAPI = async (toEmail, subject, htmlContent) => {
         method: 'POST',
         headers: {
             'accept': 'application/json',
-            'api-key': serverConfig.BREVO_API_KEY,
+            'api-key': serverConfig.BREVO_API_KEY.trim(),
             'content-type': 'application/json',
         },
         body: JSON.stringify({
