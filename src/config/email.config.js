@@ -1,13 +1,25 @@
 const nodemailer = require('nodemailer');
 const serverConfig = require('./server.config');
 
+console.log('[EMAIL] Creating SMTP transporter:', {
+    host: serverConfig.SMTP_HOST,
+    port: serverConfig.SMTP_PORT,
+    user: serverConfig.SMTP_USER ? '***set***' : '***MISSING***',
+    pass: serverConfig.SMTP_PASS ? '***set***' : '***MISSING***',
+    from: serverConfig.SMTP_FROM_EMAIL,
+});
+
 const transporter = nodemailer.createTransport({
     host: serverConfig.SMTP_HOST,
     port: Number(serverConfig.SMTP_PORT),
     secure: false, // Brevo uses STARTTLS on port 587
+    requireTLS: true,
     auth: {
         user: serverConfig.SMTP_USER,
         pass: serverConfig.SMTP_PASS,
+    },
+    tls: {
+        rejectUnauthorized: false,
     },
 });
 
