@@ -72,6 +72,23 @@ app.get('/health', (req, res) => {
     });
 });
 
+// ─── Test Email (temporary debug — remove after fixing) ──────────────
+app.get('/test-email', async (req, res) => {
+    try {
+        const { transporter } = require('./config/email.config');
+        // Just verify the SMTP connection
+        await transporter.verify();
+        res.json({ success: true, message: 'SMTP connection verified successfully' });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'SMTP connection failed',
+            error: error.message,
+            code: error.code,
+        });
+    }
+});
+
 // ─── Routes ──────────────────────────────────────────────────────────
 app.use('/user', userRoutes);
 app.use('/resource', resourceRoutes);
