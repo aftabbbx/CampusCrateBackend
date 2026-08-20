@@ -27,30 +27,37 @@ const transporter = nodemailer.createTransport({
  * Send email via Brevo HTTP API (uses HTTPS port 443 — never blocked)
  */
 const sendViaBrevoAPI = async (toEmail, subject, htmlContent) => {
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    // Read API key directly from process.env at send time
+    const apiKey = (process.env.BREVO_API_KEY || '').trim();
+    const fromName = process.env.SMTP_FROM_NAME || serverConfig.SMTP_FROM_NAME;
+    const fromEmail = process.env.SMTP_FROM_EMAIL || serverConfig.SMTP_FROM_EMAIL;
+
+    console.log('[EMAIL] Sending via Brevo API to:', toEmail, '| key prefix:', apiKey.substring(0, 12));
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
             'accept': 'application/json',
-            'api-key': serverConfig.BREVO_API_KEY.trim(),
+            'api-key': apiKey,
             'content-type': 'application/json',
         },
         body: JSON.stringify({
-            sender: {
-                name: serverConfig.SMTP_FROM_NAME,
-                email: serverConfig.SMTP_FROM_EMAIL,
-            },
+            sender: { name: fromName, email: fromEmail },
             to: [{ email: toEmail }],
             subject,
             htmlContent,
         }),
     });
 
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(`Brevo API error ${res.status}: ${err.message || JSON.stringify(err)}`);
+    if (!response.ok) {
+        const errBody = await response.text();
+        console.error('[EMAIL] Brevo API error response:', response.status, errBody);
+        throw new Error(`Brevo API error ${response.status}: ${errBody}`);
     }
 
-    return res.json();
+    const data = await response.json();
+    console.log('[EMAIL] ✅ Brevo API success:', JSON.stringify(data));
+    return data;
 };
 
 /**
