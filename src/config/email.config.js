@@ -1,27 +1,70 @@
 const nodemailer = require('nodemailer');
 const serverConfig = require('./server.config');
 
-console.log('[EMAIL] Creating SMTP transporter:', {
-    host: serverConfig.SMTP_HOST,
-    port: serverConfig.SMTP_PORT,
-    user: serverConfig.SMTP_USER ? '***set***' : '***MISSING***',
-    pass: serverConfig.SMTP_PASS ? '***set***' : '***MISSING***',
-    from: serverConfig.SMTP_FROM_EMAIL,
-});
+// ─── Email Transport Strategy ───────────────────────────────────────
+// Brevo HTTP API (port 443) for production — works on Render/Vercel
+// SMTP fallback for local development
+const useBrevoAPI = !!serverConfig.BREVO_API_KEY;
 
+console.log('[EMAIL] Mode:', useBrevoAPI ? 'Brevo HTTP API' : 'SMTP');
+
+// SMTP transporter (local dev fallback)
 const transporter = nodemailer.createTransport({
     host: serverConfig.SMTP_HOST,
     port: Number(serverConfig.SMTP_PORT),
-    secure: false, // Brevo uses STARTTLS on port 587
-    requireTLS: true,
+    secure: false,
     auth: {
         user: serverConfig.SMTP_USER,
         pass: serverConfig.SMTP_PASS,
     },
-    tls: {
-        rejectUnauthorized: false,
-    },
 });
+
+/**
+ * Send email via Brevo HTTP API (uses HTTPS port 443 — never blocked)
+ */
+const sendViaBrevoAPI = async (toEmail, subject, htmlContent) => {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'accept': 'application/json',
+            'api-key': serverConfig.BREVO_API_KEY,
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+            sender: {
+                name: serverConfig.SMTP_FROM_NAME,
+                email: serverConfig.SMTP_FROM_EMAIL,
+            },
+            to: [{ email: toEmail }],
+            subject,
+            htmlContent,
+        }),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`Brevo API error ${res.status}: ${err.message || JSON.stringify(err)}`);
+    }
+
+    return res.json();
+};
+
+/**
+ * Universal send email — picks the right transport
+ */
+const sendEmail = async (toEmail, subject, html) => {
+    if (useBrevoAPI) {
+        return sendViaBrevoAPI(toEmail, subject, html);
+    }
+    // SMTP fallback (local dev)
+    const mailOptions = {
+        from: `"${serverConfig.SMTP_FROM_NAME}" <${serverConfig.SMTP_FROM_EMAIL}>`,
+        to: toEmail,
+        subject,
+        html,
+    };
+    return transporter.sendMail(mailOptions);
+};
 
 // ─── Shared Email Wrapper ───────────────────────────────────────────
 const emailWrapper = (content) => `
@@ -176,15 +219,7 @@ const sendOtpEmail = async (toEmail, otp, purpose = 'signup') => {
     `;
 
     const html = emailWrapper(content);
-
-    const mailOptions = {
-        from: `"${serverConfig.SMTP_FROM_NAME}" <${serverConfig.SMTP_FROM_EMAIL}>`,
-        to: toEmail,
-        subject,
-        html,
-    };
-
-    await transporter.sendMail(mailOptions);
+    await sendEmail(toEmail, subject, html);
 };
 
 /**
@@ -234,15 +269,7 @@ const sendSuspensionEmail = async (toEmail, userName) => {
     `;
 
     const html = emailWrapper(content);
-
-    const mailOptions = {
-        from: `"${serverConfig.SMTP_FROM_NAME}" <${serverConfig.SMTP_FROM_EMAIL}>`,
-        to: toEmail,
-        subject,
-        html,
-    };
-
-    await transporter.sendMail(mailOptions);
+    await sendEmail(toEmail, subject, html);
 };
 
 /**
@@ -287,15 +314,7 @@ const sendReactivationEmail = async (toEmail, userName) => {
     `;
 
     const html = emailWrapper(content);
-
-    const mailOptions = {
-        from: `"${serverConfig.SMTP_FROM_NAME}" <${serverConfig.SMTP_FROM_EMAIL}>`,
-        to: toEmail,
-        subject,
-        html,
-    };
-
-    await transporter.sendMail(mailOptions);
+    await sendEmail(toEmail, subject, html);
 };
 
 module.exports = { sendOtpEmail, sendSuspensionEmail, sendReactivationEmail, transporter };

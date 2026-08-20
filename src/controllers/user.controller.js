@@ -247,7 +247,13 @@ const resendOtp = async (req, res) => {
         user.otp_expires_at = new Date(Date.now() + 10 * 60 * 1000);
         await user.save();
 
-        await sendOtpEmail(user.email, otp, purpose || 'signup');
+        console.log(`\n📧 Resend OTP for ${user.email}: ${otp}\n`);
+        try {
+            await sendOtpEmail(user.email, otp, purpose || 'signup');
+            console.log('✅ Resend OTP email sent successfully');
+        } catch (emailErr) {
+            console.error('❌ Resend email failed:', emailErr.message, emailErr.code, emailErr.responseCode);
+        }
 
         return res.status(200).json({ success: true, message: 'OTP resent successfully' });
     } catch (error) {

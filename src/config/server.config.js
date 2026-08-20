@@ -14,4 +14,5 @@ module.exports = {
     SMTP_PASS: process.env.SMTP_PASS,
     SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL,
     SMTP_FROM_NAME: process.env.SMTP_FROM_NAME || 'CampusCrate',
+    BREVO_API_KEY: process.env.BREVO_API_KEY,
 };
